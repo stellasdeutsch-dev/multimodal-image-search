@@ -3,6 +3,7 @@
 > Search a large photo collection in plain language — type *"red car parked near a building at night"* and get the matching images back. Built with **CLIP** embeddings, a **FAISS** vector index, an optional **LLM** query layer, and a **FastAPI + Gradio** interface.
 
 <p>
+  <a href="https://github.com/stellasdeutsch-dev/multimodal-image-search/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/stellasdeutsch-dev/multimodal-image-search/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%E2%80%933.12-blue">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="Status" src="https://img.shields.io/badge/status-portfolio%20project-orange">
