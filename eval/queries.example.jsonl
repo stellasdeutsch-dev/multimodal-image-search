@@ -1,0 +1,3 @@
+{"query": "a red circle", "relevant_ids": [0, 15]}
+{"query": "a blue square", "relevant_ids": [7, 22]}
+{"query": "a green triangle", "relevant_ids": [5, 20]}

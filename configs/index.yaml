@@ -1,0 +1,10 @@
+# Phase 3 — vector index
+embeddings_path: data/embeddings.npy
+ids_path: data/ids.npy
+index_path: data/index.faiss
+index_type: flat         # flat | ivf | hnsw
+metric: ip               # ip (cosine on normalized vectors) | l2
+ivf_nlist: 1024          # IVF: number of coarse clusters
+ivf_nprobe: 16           # IVF: clusters probed at query time (recall/latency knob)
+hnsw_m: 32               # HNSW: graph connectivity
+hnsw_ef_search: 64       # HNSW: search breadth (recall/latency knob)

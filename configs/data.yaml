@@ -1,0 +1,8 @@
+# Phase 1 — data ingestion (builds the manifest)
+images_dir: data/images
+manifest_path: data/manifest.parquet
+image_size: 224          # reference size for the CLIP preprocessing crop
+min_size: 32             # drop images whose shorter side is below this (px)
+extensions: [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
+dedup: true              # drop exact-duplicate files (content hash)
+recursive: true          # walk subdirectories of images_dir

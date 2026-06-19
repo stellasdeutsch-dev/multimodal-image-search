@@ -1,0 +1,43 @@
+[project]
+name = "multimodal-image-search"
+version = "0.1.0"
+description = "Natural-language and image-to-image search over large photo collections (CLIP + FAISS + LLM + FastAPI/Gradio)."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Shyngys Narseyit" }]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyarrow>=14.0",
+  "pillow>=10.0",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+ml = ["torch>=2.2", "open_clip_torch>=2.24"]
+index = ["faiss-cpu>=1.8"]
+serve = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9", "gradio>=4.0"]
+llm = ["anthropic>=0.39"]
+track = ["wandb>=0.16"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+all = [
+  "torch>=2.2", "open_clip_torch>=2.24", "faiss-cpu>=1.8",
+  "fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9", "gradio>=4.0",
+  "anthropic>=0.39", "wandb>=0.16", "pytest>=8.0", "ruff>=0.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

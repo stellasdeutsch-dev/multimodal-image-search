@@ -1,0 +1,12 @@
+# Phase 2 — embedding generation (run on the GPU via SLURM)
+model: ViT-B-32
+pretrained: laion2b_s34b_b79k
+manifest_path: data/manifest.parquet
+embeddings_path: data/embeddings.npy
+ids_path: data/ids.npy
+batch_size: 256
+num_workers: 8
+device: auto             # auto | cuda | mps | cpu
+fp16: true               # autocast (effective on CUDA)
+wandb: false             # set true to log throughput to Weights & Biases
+wandb_project: multimodal-image-search

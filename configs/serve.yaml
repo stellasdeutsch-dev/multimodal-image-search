@@ -1,0 +1,16 @@
+# Phase 4–6 — serving (API + Web UI)
+# (ids are loaded from the index's own sidecar, not a standalone ids file)
+manifest_path: data/manifest.parquet
+index_path: data/index.faiss
+model: ViT-B-32
+pretrained: laion2b_s34b_b79k
+device: auto
+top_k: 24
+# Optional serve-time ANN tuning (override what was baked into the index at build):
+# ivf_nprobe: 16         # IVF: clusters probed at query time
+# hnsw_ef_search: 64     # HNSW: search breadth
+llm:
+  enabled: false                       # set true + export ANTHROPIC_API_KEY to enable
+  provider: anthropic
+  model: claude-haiku-4-5-20251001     # small/fast model for query rewriting
+  max_tokens: 256

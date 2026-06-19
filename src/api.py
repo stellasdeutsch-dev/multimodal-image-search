@@ -1,0 +1,101 @@
+"""Phase 4 — FastAPI search service.
+
+Endpoints:
+  GET  /health              service status + index size
+  POST /search/text         {query, k?, rewrite?} -> ranked results
+  POST /search/image        multipart image upload -> ranked results
+  GET  /image/{id}          stream an image by id (for the UI)
+
+Run:  uvicorn src.api:app --host 0.0.0.0 --port 8000
+Set MMSEARCH_CONFIG to point at a serve config (default configs/serve.yaml).
+"""
+
+from __future__ import annotations
+
+import io
+import logging
+import os
+from contextlib import asynccontextmanager
+from functools import lru_cache
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image
+from pydantic import BaseModel
+
+from .common import load_config, setup_logging
+from .llm import QueryAssistant
+from .search import Searcher
+
+log = logging.getLogger("mmsearch")
+
+CONFIG_PATH = os.environ.get("MMSEARCH_CONFIG", "configs/serve.yaml")
+STATE: dict = {}
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()
+    cfg = load_config(CONFIG_PATH)
+    STATE["cfg"] = cfg
+    STATE["searcher"] = Searcher.from_config(cfg)
+    STATE["llm"] = QueryAssistant(cfg.get("llm", {}))
+    log.info("Service ready (%d images indexed).", len(STATE["searcher"].manifest))
+    yield
+    STATE.clear()
+
+
+app = FastAPI(title="Multimodal Image Search", version="0.1.0", lifespan=lifespan)
+
+
+class TextQuery(BaseModel):
+    query: str
+    k: int | None = None
+    rewrite: bool = False
+
+
+def _searcher() -> Searcher:
+    s = STATE.get("searcher")
+    if s is None:
+        raise HTTPException(503, "Searcher not ready")
+    return s
+
+
+@lru_cache(maxsize=512)
+def _cached_text_search(used: str, k: int):
+    return STATE["searcher"].search_text(used, k)
+
+
+@app.get("/health")
+def health():
+    s = STATE.get("searcher")
+    return {"status": "ok" if s else "loading", "n_images": len(s.manifest) if s else 0}
+
+
+@app.post("/search/text")
+def search_text(body: TextQuery):
+    s = _searcher()
+    used = STATE["llm"].rewrite(body.query) if body.rewrite else body.query
+    k = body.k or s.top_k
+    results = _cached_text_search(used, k)
+    return {"query": body.query, "used_query": used, "results": results}
+
+
+@app.post("/search/image")
+async def search_image(file: UploadFile = File(...), k: int | None = None):
+    s = _searcher()
+    data = await file.read()
+    try:
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception:
+        raise HTTPException(400, "Invalid image upload")
+    return {"results": s.search_image(img, k or s.top_k)}
+
+
+@app.get("/image/{image_id}")
+def get_image(image_id: int):
+    s = _searcher()
+    rec = s.manifest.get(image_id)
+    if not rec:
+        raise HTTPException(404, "Unknown image id")
+    return FileResponse(rec["path"])

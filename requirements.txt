@@ -1,0 +1,19 @@
+# Full environment (works on the GPU cluster and on macOS).
+# Tip: on the cluster install torch from the official index for your CUDA build.
+numpy>=1.24
+pandas>=2.0
+pyarrow>=14.0
+pillow>=10.0
+pyyaml>=6.0
+tqdm>=4.66
+faiss-cpu>=1.8
+torch>=2.2
+open_clip_torch>=2.24
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+gradio>=4.0
+anthropic>=0.39
+wandb>=0.16
+pytest>=8.0
+ruff>=0.4
