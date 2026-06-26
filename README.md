@@ -21,7 +21,8 @@ This is an end-to-end system, not a notebook: a reproducible data pipeline, batc
 - **Image → image search** — upload a photo, find visually similar ones.
 - **Optional LLM layer** — rewrites vague queries into concrete, CLIP-friendly phrases (Anthropic Claude).
 - **Scales** — batch embedding on GPU + FAISS `IVF`/`HNSW` indexing for fast search over 1M+ vectors.
-- **Runs anywhere** — FAISS-optional: a NumPy brute-force fallback keeps the retrieval path (and tests) working with no heavy deps.
+- **Runs anywhere** — FAISS-optional: a NumPy brute-force fallback keeps the retrieval path (and tests) working with no heavy deps. A FAISS-built index also persists a vectors sidecar, so it **round-trips** into a NumPy-only environment instead of erroring at load time.
+- **Enforced data contracts** — `src/schema.py` validates the manifest and embedding/id alignment at every stage boundary, so a malformed artifact fails fast with a clear message (not a downstream `KeyError`).
 - **Measured** — Recall@K, mAP, and latency reported by an evaluation script.
 
 ---
@@ -159,6 +160,18 @@ Fill in after running `eval/evaluate.py` on a labeled query set:
 - [ ] Cross-encoder re-ranking stage
 
 ---
+
+## 🧩 Extending this
+
+The architecture is built around named seams, so each piece swaps without touching the rest:
+
+| Want to… | Change | Why it's isolated |
+|---|---|---|
+| Swap the embedding model | `src/model.py` `ClipEncoder`, or pass any object satisfying the `Encoder` protocol (`src/search.py`) to `Searcher` | `Searcher` depends on the `Encoder` protocol, not on CLIP — see `tests/test_api.py` / `test_search.py` for a 6-line stub encoder. |
+| Add an index type | `VectorIndex._build_faiss` in `src/index.py` (`flat`/`ivf`/`hnsw` → add a branch) | The `search()`/`save()`/`load()` contract is backend-agnostic. |
+| Use a different vector DB (Qdrant…) | implement the `VectorIndex` interface (`build`/`search`/`save`/`load`) | `Searcher` only calls those four methods. |
+| Change the LLM layer | `src/llm.py` `QueryAssistant` | Disabled by default; the API/UI call `rewrite()` which is a pass-through when off. |
+| Add a manifest field | extend `MANIFEST_COLUMNS` in `src/schema.py` | One source of truth, validated at every boundary. |
 
 ## 📜 License
 

@@ -33,13 +33,20 @@ CONFIG_PATH = os.environ.get("MMSEARCH_CONFIG", "configs/serve.yaml")
 STATE: dict = {}
 
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB cap before decoding an untrusted image
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
     cfg = load_config(CONFIG_PATH)
     STATE["cfg"] = cfg
-    STATE["searcher"] = Searcher.from_config(cfg)
-    STATE["llm"] = QueryAssistant(cfg.get("llm", {}))
+    # Build the searcher/llm unless they were pre-injected (e.g. by a test).
+    if STATE.get("searcher") is None:
+        STATE["searcher"] = Searcher.from_config(cfg)
+    if STATE.get("llm") is None:
+        STATE["llm"] = QueryAssistant(cfg.get("llm", {}))
+    STATE["version"] = STATE.get("version", 0) + 1  # bump invalidates the response cache
     log.info("Service ready (%d images indexed).", len(STATE["searcher"].manifest))
     yield
     STATE.clear()
@@ -62,7 +69,8 @@ def _searcher() -> Searcher:
 
 
 @lru_cache(maxsize=512)
-def _cached_text_search(used: str, k: int):
+def _cached_text_search(version: int, used: str, k: int):
+    # `version` keys the cache to the loaded index so a reload invalidates it.
     return STATE["searcher"].search_text(used, k)
 
 
@@ -77,7 +85,7 @@ def search_text(body: TextQuery):
     s = _searcher()
     used = STATE["llm"].rewrite(body.query) if body.rewrite else body.query
     k = body.k or s.top_k
-    results = _cached_text_search(used, k)
+    results = _cached_text_search(STATE.get("version", 0), used, k)
     return {"query": body.query, "used_query": used, "results": results}
 
 
@@ -85,6 +93,8 @@ def search_text(body: TextQuery):
 async def search_image(file: UploadFile = File(...), k: int | None = None):
     s = _searcher()
     data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "Image too large")
     try:
         img = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:

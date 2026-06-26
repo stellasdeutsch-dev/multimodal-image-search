@@ -21,7 +21,7 @@ index = ["faiss-cpu>=1.8"]
 serve = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9", "gradio>=4.0"]
 llm = ["anthropic>=0.39"]
 track = ["wandb>=0.16"]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest>=8.0", "ruff>=0.4", "fastapi>=0.110", "httpx>=0.27", "python-multipart>=0.0.9"]
 all = [
   "torch>=2.2", "open_clip_torch>=2.24", "faiss-cpu>=1.8",
   "fastapi>=0.110", "uvicorn[standard]>=0.29", "python-multipart>=0.0.9", "gradio>=4.0",

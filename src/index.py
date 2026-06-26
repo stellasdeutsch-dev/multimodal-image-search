@@ -89,6 +89,7 @@ class VectorIndex:
             raise ValueError(f"unknown index_type {self.index_type!r}")
         index.add(mat)
         self._index = index
+        self._matrix = mat  # retained so the index persists portably (see save())
         log.info("Built FAISS %s index: ntotal=%d", self.index_type, index.ntotal)
 
     # ---- search ----
@@ -135,8 +136,9 @@ class VectorIndex:
         )
         if backend == "faiss":
             faiss.write_index(self._index, str(path))
-        else:
-            np.save(_sibling(path, ".vectors.npy"), self._matrix)
+        # Always persist the normalized vectors so the index is portable: a
+        # FAISS-built index can still be loaded in a NumPy-only environment.
+        np.save(_sibling(path, ".vectors.npy"), self._matrix)
         log.info("Saved %s index -> %s", backend, path)
 
     @classmethod
@@ -147,22 +149,26 @@ class VectorIndex:
         obj = cls(dim=meta["dim"], index_type=meta["index_type"],
                   metric=meta["metric"], use_faiss=(meta["backend"] == "faiss"))
         obj.ids = np.load(_sibling(path, ".ids.npy"))
-        if meta["backend"] == "faiss":
-            if not _HAS_FAISS:
-                raise RuntimeError("Index built with FAISS but faiss is not installed here.")
+        if meta["backend"] == "faiss" and _HAS_FAISS:
             obj._index = faiss.read_index(str(path))
             if ivf_nprobe is not None and hasattr(obj._index, "nprobe"):
                 obj._index.nprobe = ivf_nprobe
             if hnsw_ef_search is not None and hasattr(obj._index, "hnsw"):
                 obj._index.hnsw.efSearch = hnsw_ef_search
         else:
+            # NumPy fallback via the vectors sidecar — round-trips a FAISS-built
+            # index in a NumPy-only environment instead of erroring at load time.
+            obj.use_faiss = False
             obj._matrix = np.load(_sibling(path, ".vectors.npy"))
         return obj
 
 
 def build_from_config(cfg: dict) -> VectorIndex:
+    from .schema import validate_embeddings
+
     emb = np.load(cfg["embeddings_path"])
     ids = np.load(cfg["ids_path"])
+    validate_embeddings(emb, ids)
     idx = VectorIndex(
         dim=emb.shape[1],
         index_type=cfg.get("index_type", "flat"),

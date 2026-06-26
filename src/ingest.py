@@ -13,6 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 from .common import load_config, setup_logging, write_manifest
+from .schema import validate_manifest
 
 log = logging.getLogger("mmsearch")
 
@@ -55,6 +56,7 @@ def build_manifest(cfg: dict):
 
     df = pd.DataFrame(rows)
     df.insert(0, "id", range(len(df)))
+    validate_manifest(df)
     write_manifest(df, cfg["manifest_path"])
     log.info("Wrote manifest: %d images -> %s", len(df), cfg["manifest_path"])
     return df

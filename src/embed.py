@@ -16,6 +16,7 @@ import numpy as np
 
 from .common import load_config, read_manifest, setup_logging
 from .model import ClipEncoder
+from .schema import validate_manifest
 
 log = logging.getLogger("mmsearch")
 
@@ -43,7 +44,7 @@ def _make_loader(paths, preprocess, batch_size: int, num_workers: int):
 
 
 def run(cfg: dict) -> None:
-    df = read_manifest(cfg["manifest_path"])
+    df = validate_manifest(read_manifest(cfg["manifest_path"]))
     paths = df["path"].tolist()
     ids = df["id"].to_numpy().astype("int64")
     if not paths:

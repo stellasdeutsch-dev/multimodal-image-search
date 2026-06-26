@@ -7,15 +7,30 @@ testable without the heavy CLIP stack (see tests/test_search.py)."""
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from .common import load_config, manifest_to_dict, read_manifest
 from .index import VectorIndex
+from .schema import validate_manifest
+
+if TYPE_CHECKING:
+    import numpy as np
 
 log = logging.getLogger("mmsearch")
 
 
+@runtime_checkable
+class Encoder(Protocol):
+    """The encoder seam. Anything implementing this drives retrieval — CLIP,
+    SigLIP, a fine-tuned model, or a test stub — with no change to Searcher."""
+
+    def encode_text(self, texts: list[str]) -> "np.ndarray": ...
+    def encode_images(self, images: list) -> "np.ndarray": ...
+
+
 class Searcher:
-    def __init__(self, encoder, index: VectorIndex, manifest: dict[int, dict], top_k: int = 24) -> None:
+    def __init__(self, encoder: "Encoder", index: VectorIndex, manifest: dict[int, dict],
+                 top_k: int = 24) -> None:
         self.encoder = encoder
         self.index = index
         self.manifest = manifest
@@ -32,7 +47,7 @@ class Searcher:
             ivf_nprobe=cfg.get("ivf_nprobe"),
             hnsw_ef_search=cfg.get("hnsw_ef_search"),
         )
-        manifest = manifest_to_dict(read_manifest(cfg["manifest_path"]))
+        manifest = manifest_to_dict(validate_manifest(read_manifest(cfg["manifest_path"])))
         return cls(encoder, index, manifest, top_k=cfg.get("top_k", 24))
 
     def _format(self, scores, ids) -> list[dict]:
