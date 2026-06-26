@@ -21,20 +21,30 @@ from .schema import validate_manifest
 log = logging.getLogger("mmsearch")
 
 
+class _ImagePathDataset:
+    """Map-style dataset (no torch base class, so the module stays importable
+    without torch AND the dataset is picklable for DataLoader workers under the
+    'spawn' start method — e.g. on macOS — not just Linux 'fork')."""
+
+    def __init__(self, paths, preprocess):
+        self.paths = paths
+        self.preprocess = preprocess
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __getitem__(self, i: int):
+        from PIL import Image
+
+        with Image.open(self.paths[i]) as im:
+            return self.preprocess(im.convert("RGB"))
+
+
 def _make_loader(paths, preprocess, batch_size: int, num_workers: int):
     import torch
-    from PIL import Image
-
-    class _Dataset(torch.utils.data.Dataset):
-        def __len__(self) -> int:
-            return len(paths)
-
-        def __getitem__(self, i: int):
-            with Image.open(paths[i]) as im:
-                return preprocess(im.convert("RGB"))
 
     return torch.utils.data.DataLoader(
-        _Dataset(),
+        _ImagePathDataset(paths, preprocess),
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=False,
