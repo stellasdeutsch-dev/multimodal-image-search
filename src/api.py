@@ -68,6 +68,14 @@ def _searcher() -> Searcher:
     return s
 
 
+def _resolve_k(k: int | None, default: int) -> int:
+    if k is None:
+        return default
+    if k <= 0:
+        raise HTTPException(422, "k must be a positive integer")
+    return k
+
+
 @lru_cache(maxsize=512)
 def _cached_text_search(version: int, used: str, k: int):
     # `version` keys the cache to the loaded index so a reload invalidates it.
@@ -84,7 +92,7 @@ def health():
 def search_text(body: TextQuery):
     s = _searcher()
     used = STATE["llm"].rewrite(body.query) if body.rewrite else body.query
-    k = body.k or s.top_k
+    k = _resolve_k(body.k, s.top_k)
     results = _cached_text_search(STATE.get("version", 0), used, k)
     return {"query": body.query, "used_query": used, "results": results}
 
@@ -99,7 +107,7 @@ async def search_image(file: UploadFile = File(...), k: int | None = None):
         img = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:
         raise HTTPException(400, "Invalid image upload")
-    return {"results": s.search_image(img, k or s.top_k)}
+    return {"results": s.search_image(img, _resolve_k(k, s.top_k))}
 
 
 @app.get("/image/{image_id}")
@@ -108,4 +116,6 @@ def get_image(image_id: int):
     rec = s.manifest.get(image_id)
     if not rec:
         raise HTTPException(404, "Unknown image id")
+    if not os.path.isfile(rec["path"]):
+        raise HTTPException(404, "Image file is missing")
     return FileResponse(rec["path"])

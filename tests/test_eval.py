@@ -14,3 +14,9 @@ def test_average_precision():
     ap = average_precision([1, 0, 2], [1, 2])
     assert abs(ap - ((1.0 + 2 / 3) / 2)) < 1e-9
     assert average_precision([0, 0], [1]) == 0.0
+
+
+def test_recall_ap_edge_cases():
+    assert recall_at_k([], [1], 5) == 0.0          # empty ranking
+    assert recall_at_k([1, 2], [], 2) == 0.0       # no relevant items
+    assert average_precision([], [1, 2]) == 0.0    # empty ranking, no crash

@@ -40,3 +40,17 @@ def test_health_and_text_search():
         results = r.json()["results"]
         assert results[0]["id"] == 10
         assert results[0]["path"] == "a"
+
+
+def test_invalid_k_rejected():
+    _inject()
+    with TestClient(api.app) as client:
+        assert client.post("/search/text", json={"query": "x", "k": -1}).status_code == 422
+        assert client.post("/search/text", json={"query": "x", "k": 0}).status_code == 422
+
+
+def test_image_endpoint_404s():
+    _inject()
+    with TestClient(api.app) as client:
+        assert client.get("/image/999").status_code == 404   # unknown id
+        assert client.get("/image/10").status_code == 404    # known id, file missing on disk

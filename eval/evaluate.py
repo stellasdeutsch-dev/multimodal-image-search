@@ -61,6 +61,11 @@ def evaluate(cfg: dict, queries_path: str, ks=(1, 5, 10)) -> dict:
         aps.append(average_precision(ranked, rel))
 
     report = {"n_queries": len(items)}
+    if not items:                       # avoid np.mean([]) -> NaN (invalid JSON)
+        for k in ks:
+            report[f"recall@{k}"] = 0.0
+        report.update({"mAP": 0.0, "latency_ms_p50": 0.0, "latency_ms_p95": 0.0})
+        return report
     for k in ks:
         report[f"recall@{k}"] = round(float(np.mean(recalls[k])), 4)
     report["mAP"] = round(float(np.mean(aps)), 4)
